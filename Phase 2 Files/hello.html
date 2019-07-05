@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <title>Waypoints in Directions</title>
+    <style>
+      #right-panel {
+        font-family: 'Roboto','sans-serif';
+        line-height: 30px;
+        padding-left: 10px;
+      }
+
+      #right-panel select, #right-panel input {
+        font-size: 15px;
+      }
+
+      #right-panel select {
+        width: 100%;
+      }
+
+      #right-panel i {
+        font-size: 12px;
+      }
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        height: 100%;
+        float: left;
+        width: 70%;
+        height: 100%;
+      }
+      #right-panel {
+        margin: 20px;
+        border-width: 2px;
+        width: 20%;
+        height: 400px;
+        float: left;
+        text-align: left;
+        padding-top: 0;
+      }
+      #directions-panel {
+        margin-top: 10px;
+        background-color: #FFEE77;
+        padding: 10px;
+        overflow: scroll;
+        height: 174px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <div id="right-panel">
+    <div>
+    <b>Start:</b>
+    
+    <br>
+    <b>Reservoir Waypoints:</b> <br>
+    <i>(Ctrl+Click or Cmd+Click for multiple selection)</i> <br>
+    <select multiple id="waypoints">
+      <option value="kurla, mh">Kurla</option>
+      <option value="dadar, mh">Dadar</option>
+
+    </select>
+    <br>
+    <b>End:</b>
+    <select id="end">
+      <option value="mahalaxmi, mh">mahalaxmi</option>
+
+    </select>
+    <br>
+      <input type="submit" id="submit">
+    </div>
+    <div id="directions-panel"></div>
+    </div>
+    <script>
+      function initMap() 
+      {
+        if (navigator.geolocation) 
+        {
+          navigator.geolocation.getCurrentPosition(function (p) 
+          {
+            LatLng = new google.maps.LatLng(p.coords.latitude, p.coords.longitude);
+            console.log(LatLng);
+            var mapOptions = 
+            {
+                center: LatLng,
+                zoom: 13,
+                mapTypeId: google.maps.MapTypeId.ROADMAP
+            };
+            
+          });
+        }   
+
+        //initialize direction service
+        var directionsService = new google.maps.DirectionsService;
+        var directionsDisplay = new google.maps.DirectionsRenderer
+        ({
+          draggable: true,
+          map: map,
+	        animation: google.maps.Animation.DROP,
+          panel: document.getElementById('right-panel')
+        });
+
+        //initialize map
+        var map = new google.maps.Map(document.getElementById('map'), 
+        {
+          zoom: 11,
+          center: {lat: 19.0728, lng:72.9007 }
+        });
+        directionsDisplay.setMap(map);
+	      
+        //traffic layer
+        var trafficLayer = new google.maps.TrafficLayer();
+        trafficLayer.setMap(map);
+        
+        //on submit
+        document.getElementById('submit').addEventListener('click', function() 
+        {
+          calculateAndDisplayRoute(directionsService, directionsDisplay, LatLng);
+        });
+      }
+	     
+      function calculateAndDisplayRoute(directionsService, directionsDisplay, LatLng) 
+      {
+        
+	      var waypts = [];
+        var checkboxArray = document.getElementById('waypoints');
+        for (var i = 0; i < checkboxArray.length; i++) {
+          if (checkboxArray.options[i].selected) {
+            waypts.push({
+              location: checkboxArray[i].value,
+              stopover: true
+            });
+          }
+        }
+
+        //Direction and Route
+        directionsService.route({
+          origin: LatLng,
+          //document.getElementById('start').value,
+          destination: document.getElementById('end').value,
+          waypoints: waypts,
+          optimizeWaypoints: true,
+          travelMode: 'DRIVING',
+      	   drivingOptions: {
+      			    departureTime: new Date(),
+      			    trafficModel: 'pessimistic'
+      			  }
+        }, function(response, status) {
+          if (status === 'OK') {
+            directionsDisplay.setDirections(response);
+            var route = response.routes[0];
+            var summaryPanel = document.getElementById('directions-panel');
+            summaryPanel.innerHTML = '';
+           // For each route, display summary information.
+            for (var i = 0; i < route.legs.length; i++) {
+              var routeSegment = i + 1;
+              summaryPanel.innerHTML += '<b>Route Segment: ' + routeSegment +
+                  '</b><br>';
+              summaryPanel.innerHTML += route.legs[i].start_address + ' to ';
+              summaryPanel.innerHTML += route.legs[i].end_address + '<br>';
+              summaryPanel.innerHTML += route.legs[i].distance.text + '<br><br>';
+            }
+          } else {
+            window.alert('Directions request failed due to ' + status);
+          }
+        });
+
+        /*
+        var pnChannel = "map-channel";
+        var pubnub = new PubNub({
+          publishKey:   'pub-c-70d45fa9-9918-469b-ac80-d9837772ad98',
+          subscribeKey: 'sub-c-67f43a04-9eef-11e9-b415-decf8d804c29'
+        });
+        pubnub.subscribe({channels: [pnChannel]});
+        pubnub.addListener({message:redraw});
+
+        setInterval(function() {
+          pubnub.publish({channel:pnChannel, message:{lat:window.lat + 0.001, lng:window.lng + 0.01}});
+         }, 500); 
+      */
+  }
+    </script>
+    <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCxlwo-TyRGc-A6kgi3esrCNNy2HF2kQoU &callback=initMap">
+    </script>
+    <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.4.19.0.min.js"></script>
+  </body>
+</html>
