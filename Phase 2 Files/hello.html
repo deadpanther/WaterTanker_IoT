@@ -56,7 +56,14 @@
     <div id="right-panel">
     <div>
     <b>Start:</b>
-    
+
+    <div id="map"></div>
+    <div id="infowindow-content">
+      <img src="" width="8" height="8" id="place-icon">
+      <span id="place-name"  class="title"></span><br>
+      <span id="place-address"></span>
+    </div>
+
     <br>
     <b>Reservoir Waypoints:</b> <br>
     <i>(Ctrl+Click or Cmd+Click for multiple selection)</i> <br>
@@ -67,33 +74,64 @@
     </select>
     <br>
     <b>End:</b>
-    <select id="end">
-      <option value="mahalaxmi, mh">mahalaxmi</option>
+    <div class="pac-card" id="pac-card">
+      <div>
+        <div id="title">
+        </div>
+        <div id="type-selector" class="pac-controls">
+          <input type="radio" name="type" id="changetype-all" checked="checked">
+          <label for="changetype-all">All</label>
 
-    </select>
+          <input type="radio" name="type" id="changetype-establishment">
+          <label for="changetype-establishment">Establishments</label>
+
+          <input type="radio" name="type" id="changetype-address">
+          <label for="changetype-address">Addresses</label>
+
+          <input type="radio" name="type" id="changetype-geocode">
+          <label for="changetype-geocode">Geocodes</label>
+        </div>
+        <div id="strict-bounds-selector" class="pac-controls">
+          <input type="checkbox" id="use-strict-bounds" value="">
+          <label for="use-strict-bounds">Strict Bounds</label>
+        </div>
+      </div>
+      <div id="pac-container">
+        <input id="pac-input" type="text"
+            placeholder="Enter a location">
+      </div>
+    </div>
+
     <br>
       <input type="submit" id="submit">
     </div>
     <div id="directions-panel"></div>
     </div>
     <script>
-      function initMap() 
+      function initMap()
       {
-        if (navigator.geolocation) 
+        //START location
+        if (navigator.geolocation)
         {
-          navigator.geolocation.getCurrentPosition(function (p) 
+          navigator.geolocation.getCurrentPosition(function (p)
           {
-            LatLng = new google.maps.LatLng(p.coords.latitude, p.coords.longitude);
+            SourceLatLng = new google.maps.LatLng(p.coords.latitude, p.coords.longitude);
             console.log(LatLng);
-            var mapOptions = 
+            var mapOptions =
             {
                 center: LatLng,
                 zoom: 13,
                 mapTypeId: google.maps.MapTypeId.ROADMAP
             };
-            
+
           });
-        }   
+        }
+
+        var map = new google.maps.Map(document.getElementById('map'),
+        {
+          zoom: 11,
+          center: {lat: 19.0728, lng:72.9007 }
+        });
 
         //initialize direction service
         var directionsService = new google.maps.DirectionsService;
@@ -106,27 +144,101 @@
         });
 
         //initialize map
-        var map = new google.maps.Map(document.getElementById('map'), 
-        {
-          zoom: 11,
-          center: {lat: 19.0728, lng:72.9007 }
-        });
+
         directionsDisplay.setMap(map);
-	      
+
+        var card = document.getElementById('pac-card');
+        var input = document.getElementById('pac-input');
+        var types = document.getElementById('type-selector');
+        var strictBounds = document.getElementById('strict-bounds-selector');
+
+        var autocomplete = new google.maps.places.Autocomplete(input);
+        autocomplete.bindTo('bounds', map);
+
+        // Set the data fields to return when the user selects a place.
+        autocomplete.setFields(
+            ['address_components', 'geometry', 'icon', 'name']);
+
+        var infowindow = new google.maps.InfoWindow();
+        var infowindowContent = document.getElementById('infowindow-content');
+        infowindow.setContent(infowindowContent);
+        var marker = new google.maps.Marker({
+          map: map,
+          anchorPoint: new google.maps.Point(0, -29),
+          draggable: true
+        });
+
+        autocomplete.addListener('place_changed', function() {
+          infowindow.close();
+          marker.setVisible(false);
+          var place = autocomplete.getPlace();
+          if (!place.geometry) {
+            // User entered the name of a Place that was not suggested and
+            // pressed the Enter key, or the Place Details request failed.
+            window.alert("No details available for input: '" + place.name + "'");
+            return;
+          }
+
+          // If the place has a geometry, then present it on a map.
+          if (place.geometry.viewport) {
+            map.fitBounds(place.geometry.viewport);
+          } else {
+            map.setCenter(place.geometry.location);
+            map.setZoom(17);  // Why 17? Because it looks good.
+          }
+          marker.setPosition(place.geometry.location);
+          DestinationLatLng = marker.getPosition(place.geometry.location);
+          marker.setVisible(true);
+
+          var address = '';
+          if (place.address_components) {
+            address = [
+              (place.address_components[0] && place.address_components[0].short_name || ''),
+              (place.address_components[1] && place.address_components[1].short_name || ''),
+              (place.address_components[2] && place.address_components[2].short_name || '')
+            ].join(' ');
+          }
+
+          infowindowContent.children['place-icon'].src = place.icon;
+          infowindowContent.children['place-name'].textContent = place.name;
+          infowindowContent.children['place-address'].textContent = address;
+          infowindow.open(map, marker);
+        });
+
+        // Sets a listener on a radio button to change the filter type on Places
+        // Autocomplete.
+        function setupClickListener(id, types) {
+          var radioButton = document.getElementById(id);
+          radioButton.addEventListener('click', function() {
+            autocomplete.setTypes(types);
+          });
+        }
+
+        setupClickListener('changetype-all', []);
+        setupClickListener('changetype-address', ['address']);
+        setupClickListener('changetype-establishment', ['establishment']);
+        setupClickListener('changetype-geocode', ['geocode']);
+
+        document.getElementById('use-strict-bounds')
+            .addEventListener('click', function() {
+              console.log('Checkbox clicked! New state=' + this.checked);
+              autocomplete.setOptions({strictBounds: this.checked});
+            });
+
         //traffic layer
         var trafficLayer = new google.maps.TrafficLayer();
         trafficLayer.setMap(map);
-        
+
         //on submit
-        document.getElementById('submit').addEventListener('click', function() 
+        document.getElementById('submit').addEventListener('click', function()
         {
-          calculateAndDisplayRoute(directionsService, directionsDisplay, LatLng);
+          calculateAndDisplayRoute(directionsService, directionsDisplay, SourceLatLng, DestinationLatLng);
         });
       }
-	     
-      function calculateAndDisplayRoute(directionsService, directionsDisplay, LatLng) 
+
+      function calculateAndDisplayRoute(directionsService, directionsDisplay, SourceLatLng, DestinationLatLng)
       {
-        
+
 	      var waypts = [];
         var checkboxArray = document.getElementById('waypoints');
         for (var i = 0; i < checkboxArray.length; i++) {
@@ -140,9 +252,9 @@
 
         //Direction and Route
         directionsService.route({
-          origin: LatLng,
+          origin: SourceLatLng,
           //document.getElementById('start').value,
-          destination: document.getElementById('end').value,
+          destination: DestinationLatLng,
           waypoints: waypts,
           optimizeWaypoints: true,
           travelMode: 'DRIVING',
@@ -181,12 +293,12 @@
 
         setInterval(function() {
           pubnub.publish({channel:pnChannel, message:{lat:window.lat + 0.001, lng:window.lng + 0.01}});
-         }, 500); 
+         }, 500);
       */
   }
     </script>
     <script async defer
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCxlwo-TyRGc-A6kgi3esrCNNy2HF2kQoU &callback=initMap">
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCxlwo-TyRGc-A6kgi3esrCNNy2HF2kQoU&callback=initMap&libraries=places">
     </script>
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.4.19.0.min.js"></script>
   </body>
