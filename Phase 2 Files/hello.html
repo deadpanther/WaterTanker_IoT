@@ -108,9 +108,145 @@
     <div id="directions-panel"></div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js" type="text/javascript"></script>
-    <script type="text/javascript">
+    <script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <!-- The core Firebase JS SDK is always required and must be listed first -->
+  <script src="https://www.gstatic.com/firebasejs/6.2.4/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/6.2.4/firebase-database.js"></script>
 
-      function initMap()
+  <!-- TODO: Add SDKs for Firebase products that you want to use
+       https://firebase.google.com/docs/web/setup#config-web-app -->
+  <script>
+    // Your web app's Firebase configuration
+    var firebaseConfig = {
+      apiKey: "AIzaSyDTN-1kbj2a3QX02H37uNtOJnYaw3gTt8Y",
+      authDomain: "meta-sensor-217013.firebaseapp.com",
+      databaseURL: "https://meta-sensor-217013.firebaseio.com",
+      projectId: "meta-sensor-217013",
+      storageBucket: "meta-sensor-217013.appspot.com",
+      messagingSenderId: "203004972754",
+      appId: "1:203004972754:web:d4eedceab12a3b26"
+    };
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    console.log(firebase);
+    database = firebase.database();
+    ref = database.ref('vehicle1');
+    //Basic map and for connection
+    function initBasicMap()
+    {
+
+      var map = new google.maps.Map(document.getElementById('map'),
+      {
+        zoom: 11,
+        center: {lat: 19.0728, lng:72.9007 }
+      });
+
+      //initialize direction service
+      var directionsService = new google.maps.DirectionsService;
+      var directionsDisplay = new google.maps.DirectionsRenderer
+      ({
+        draggable: true,
+        map: map,
+        animation: google.maps.Animation.DROP,
+        panel: document.getElementById('right-panel')
+      });
+
+      //initialize map
+
+      directionsDisplay.setMap(map);
+
+      var card = document.getElementById('pac-card');
+      var input = document.getElementById('pac-input');
+      var types = document.getElementById('type-selector');
+      var strictBounds = document.getElementById('strict-bounds-selector');
+
+      var autocomplete = new google.maps.places.Autocomplete(input);
+      autocomplete.bindTo('bounds', map);
+
+      // Set the data fields to return when the user selects a place.
+      autocomplete.setFields(
+          ['address_components', 'geometry', 'icon', 'name']);
+
+      var infowindow = new google.maps.InfoWindow();
+      var infowindowContent = document.getElementById('infowindow-content');
+      infowindow.setContent(infowindowContent);
+      var marker = new google.maps.Marker({
+        map: map,
+        anchorPoint: new google.maps.Point(0, -29),
+        draggable: true
+      });
+
+      autocomplete.addListener('place_changed', function() {
+        infowindow.close();
+        marker.setVisible(false);
+        var place = autocomplete.getPlace();
+        if (!place.geometry) {
+          // User entered the name of a Place that was not suggested and
+          // pressed the Enter key, or the Place Details request failed.
+          window.alert("No details available for input: '" + place.name + "'");
+          return;
+        }
+
+        // If the place has a geometry, then present it on a map.
+        if (place.geometry.viewport) {
+          map.fitBounds(place.geometry.viewport);
+        } else {
+          map.setCenter(place.geometry.location);
+          map.setZoom(17);  // Why 17? Because it looks good.
+        }
+        marker.setPosition(place.geometry.location);
+        //Gets destination position
+        DestinationLatLng = marker.getPosition(place.geometry.location);
+        marker.setVisible(true);
+
+        var address = '';
+        if (place.address_components) {
+          address = [
+            (place.address_components[0] && place.address_components[0].short_name || ''),
+            (place.address_components[1] && place.address_components[1].short_name || ''),
+            (place.address_components[2] && place.address_components[2].short_name || '')
+          ].join(' ');
+        }
+
+        infowindowContent.children['place-icon'].src = place.icon;
+        infowindowContent.children['place-name'].textContent = place.name;
+        infowindowContent.children['place-address'].textContent = address;
+        infowindow.open(map, marker);
+      });
+
+      // Sets a listener on a radio button to change the filter type on Places
+      // Autocomplete.
+      function setupClickListener(id, types) {
+        var radioButton = document.getElementById(id);
+        radioButton.addEventListener('click', function() {
+          autocomplete.setTypes(types);
+        });
+      }
+
+      setupClickListener('changetype-all', []);
+      setupClickListener('changetype-address', ['address']);
+      setupClickListener('changetype-establishment', ['establishment']);
+      setupClickListener('changetype-geocode', ['geocode']);
+
+      document.getElementById('use-strict-bounds')
+          .addEventListener('click', function() {
+            console.log('Checkbox clicked! New state=' + this.checked);
+            autocomplete.setOptions({strictBounds: this.checked});
+          });
+
+      //traffic layer
+      var trafficLayer = new google.maps.TrafficLayer();
+      trafficLayer.setMap(map);
+
+
+      document.getElementById('submit').addEventListener('click', function()
+      {
+
+        initMap(DestinationLatLng);
+      });
+    }
+
+      function initMap(DestinationLatLng)
       {
         //START location
         /*
@@ -130,6 +266,8 @@
           });
         }
         */
+
+
 
         var client = new Paho.MQTT.Client("postman.cloudmqtt.com",32962, "client-" + Math.random());
 
@@ -159,26 +297,6 @@
 
 
         // called when a message arrives
-        function onMessageArrived(message)
-        {
-            console.log(message);
-            //console.log("onMessageArrived:"+message.destinationName + message.payloadString);
-            data = (message.payloadString);
-            console.log(data);
-            data = JSON.parse(data);
-            console.log(data.lat);
-            console.log(data.lng);
-            SourceLatLng = new google.maps.LatLng(data.lat,data.lng);
-          }
-
-        //console.log(data.lat);
-        //console.log(data.lng);
-
-        //var data = JSON.parse(message.payloadString);
-        //console.log(data);
-        //var words = data.split(',');
-        //console.log(words[0]);
-        //console.log(words[1]);
 
         var map = new google.maps.Map(document.getElementById('map'),
         {
@@ -284,10 +402,33 @@
         trafficLayer.setMap(map);
 
         //on submit
+        function onMessageArrived(message)
+        {
+            //console.log(message);
+            //console.log("onMessageArrived:"+message.destinationName + message.payloadString);
+            data = (message.payloadString);
+            console.log(data);
+            data = JSON.parse(data);
+            console.log(data.lat);
+            console.log(data.lng);
+            SourceLatLng = new google.maps.LatLng(data.lat,data.lng);
+            fbdata = {
+              lat : data.lat,
+              lng : data.lng,
+              level : data.level,
+              float : data.float
+            }
+            console.log(fbdata);
+            ref.push(fbdata);
+            calculateAndDisplayRoute(directionsService, directionsDisplay, SourceLatLng, DestinationLatLng)
+        }
+/*
         document.getElementById('submit').addEventListener('click', function()
         {
           calculateAndDisplayRoute(directionsService, directionsDisplay, SourceLatLng, DestinationLatLng);
         });
+
+        */
       }
 
       function calculateAndDisplayRoute(directionsService, directionsDisplay, SourceLatLng, DestinationLatLng)
@@ -351,7 +492,7 @@
       */
   }
     </script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCxlwo-TyRGc-A6kgi3esrCNNy2HF2kQoU&callback=initMap&libraries=places">
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCxlwo-TyRGc-A6kgi3esrCNNy2HF2kQoU&callback=initBasicMap&libraries=places">
     </script>
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.4.19.0.min.js"></script>
   </body>
