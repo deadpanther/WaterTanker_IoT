@@ -105,7 +105,9 @@
     <p id="fbdata_fetch"></p>
 
     <br>
-      <input type="submit" id="submit">
+      <input type="submit" name="Book" id="submit">
+      <input type="submit" name="Arrived" id="arrived">
+      <input type="submit" name="Left" id="left">
     </div>
     <div id="directions-panel"></div>
     </div>
@@ -132,6 +134,10 @@
           }]
       });
     }
+
+    //Connect or note
+    conn = 0
+
     // Your web app's Firebase configuration
     var firebaseConfig = {
       apiKey: "AIzaSyDTN-1kbj2a3QX02H37uNtOJnYaw3gTt8Y",
@@ -146,7 +152,9 @@
     firebase.initializeApp(firebaseConfig);
     console.log(firebase);
     database = firebase.database();
-    ref = database.ref('vehicle1');
+    ref = database.ref('vehicle1/trip1');
+
+
     //Basic map and for connection
     function initBasicMap()
     {
@@ -257,9 +265,10 @@
 
       document.getElementById('submit').addEventListener('click', function()
       {
-
+        conn = 1;
         initMap(DestinationLatLng);
       });
+
     }
 
       function initMap(DestinationLatLng)
@@ -309,6 +318,12 @@
             console.log("onConnect");
             client.subscribe("test/data");
 
+        }
+
+        function onConnectionLost(responseObject) {
+          if (responseObject.errorCode !== 0) {
+            console.log("onConnectionLost:"+responseObject.errorMessage);
+          }
         }
 
 
@@ -428,11 +443,49 @@
             console.log(data.lat);
             console.log(data.lng);
             SourceLatLng = new google.maps.LatLng(data.lat,data.lng);
+            var today = new Date();
+            var day = today.getDay();
+            var daylist = ["Sunday","Monday","Tuesday","Wednesday ","Thursday","Friday","Saturday"];
+            console.log("Today is : " + daylist[day] + ".");
+            var hour = today.getHours();
+            var minute = today.getMinutes();
+            var second = today.getSeconds();
+            var prepand = (hour >= 12)? " PM ":" AM ";
+            hour = (hour >= 12)? hour - 12: hour;
+            if (hour===0 && prepand===' PM ')
+            {
+              if (minute===0 && second===0)
+              {
+                hour=12;
+                prepand=' Noon';
+              }
+              else
+              {
+                hour=12;
+                prepand=' PM';
+              }
+            }
+            if (hour===0 && prepand===' AM ')
+            {
+              if (minute===0 && second===0)
+              {
+              hour=12;
+              prepand=' Midnight';
+              }
+              else
+              {
+              hour=12;
+              prepand=' AM';
+              }
+            }
+            console.log("Current Time : "+ hour + prepand + " : " + minute + " : " + second);
+            var ntime = hour+prepand+":"+minute+":"+second;
             fbdata = {
               lat : data.lat,
               lng : data.lng,
               level : data.level,
-              float : data.float
+              float : data.float,
+              time : ntime
             }
             //console.log(fbdata);
             ref.push(fbdata);
@@ -447,9 +500,19 @@
               //console.log(nlat);
               nlng = snap.child("lng").val();
               addDataPointsAndRender(nlat,nlng);
+
+
             });
 
             calculateAndDisplayRoute(directionsService, directionsDisplay, SourceLatLng, DestinationLatLng)
+
+            document.getElementById('arrived').addEventListener('click', function()
+            {
+              conn = 0;
+              //initMap(DestinationLatLng);
+              //Call the function for fraud detection
+
+            });
         }
 /*
         document.getElementById('submit').addEventListener('click', function()
@@ -543,7 +606,6 @@
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.4.19.0.min.js"></script>
     <script type="text/javascript" src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
     <div id="chartContainer" style="height: 270px; width: 100%;">
-    <input id="lat" type="number" step="any" placeholder="Lat"> Y Value:
-    <input id="lng" type="number" step="any" placeholder="Lng">
+
   </body>
 </html>
