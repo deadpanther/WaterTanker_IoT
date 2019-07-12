@@ -126,10 +126,10 @@
 
       chart = new CanvasJS.Chart("chartContainer", {
           title: {
-              text: "Accepting DataPoints from User Input"
+              text: "Values"
           },
           data: [{
-              type: "line",
+              type: "scatter",
               dataPoints: dps
           }]
       });
@@ -489,10 +489,6 @@
             }
             //console.log(fbdata);
             ref.push(fbdata);
-
-            //vehicle = database.child("vehicle1");
-            //console.log(vehicle);
-            //query = vehicle.orderByChild(0)
             ref.on('child_added', snap =>{
 
               //alert(snap.val());
@@ -509,6 +505,41 @@
             document.getElementById('arrived').addEventListener('click', function()
             {
               conn = 0;
+              ref.orderByChild('timestamp').limitToLast(1).on('child_added',function(snapshot) {
+                console.log('last record', snapshot.val());
+                lastlat = snapshot.child("lat").val();
+                lastlng = snapshot.child("lng").val();
+                lastlevel = snapshot.child("level").val();
+                lastlevellength = lastlevel.length;
+                lastlevellength = lastlevellength - 2;
+                lastlevel = lastlevel.substr(0,lastlevellength);
+                lastlevel = parseInt(lastlevel, 10);
+                lastfloat = snapshot.child("float").val();
+                console.log(lastlevel);
+              });
+
+              ref.orderByChild('timestamp').limitToFirst(1).on('child_added',function(snapshot) {
+                console.log('first record', snapshot.val());
+                firstlat = snapshot.child("lat").val();
+                firstlng = snapshot.child("lng").val();
+                firstlevel = snapshot.child("level").val();
+                firstlevellength = firstlevel.length;
+                firstlevellength = firstlevellength - 2;
+                firstlevel = firstlevel.substr(0,firstlevellength);
+                firstlevel = parseInt(firstlevel, 10);
+                firstfloat = snapshot.child("float").val();
+                console.log(firstlevel);
+              });
+
+              if ((firstlevel - lastlevel <10 && firstlevel - lastlevel >0) || (lastlevel - firstlevel <10 && lastlevel - firstlevel >0) )
+              {
+                alert("No theft found");
+              }
+              else
+              {
+                alert("Theft found");
+              }
+
               //initMap(DestinationLatLng);
               //Call the function for fraud detection
 
