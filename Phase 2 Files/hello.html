@@ -28,10 +28,10 @@
         padding: 0;
       }
       #map {
-        height: 100%;
+        height: 50%;
         float: left;
-        width: 70%;
-        height: 100%;
+        width: 50%;
+        height: 70%;
       }
       #right-panel {
         margin: 20px;
@@ -56,7 +56,13 @@
     <div id="right-panel">
     <div>
     <b>Start:</b>
-    <p id="start"></p>
+    <p>Starting Latitude</p>
+    <p id="start_lat"></p>
+    <p>Starting Longitude</p>
+    <p id="start_lng"></p>
+    <p>Starting WaterLevel</p>
+    <p id="start_level"></p>
+
     <div id="map"></div>
     <div id="infowindow-content">
       <img src="" width="8" height="8" id="place-icon">
@@ -64,7 +70,6 @@
       <span id="place-address"></span>
     </div>
 
-    <br>
     <b>Reservoir Waypoints:</b> <br>
     <i>(Ctrl+Click or Cmd+Click for multiple selection)</i> <br>
     <select multiple id="waypoints">
@@ -72,7 +77,6 @@
       <option value="dadar, mh">Dadar</option>
 
     </select>
-    <br>
     <b>End:</b>
     <div class="pac-card" id="pac-card">
       <div>
@@ -499,9 +503,26 @@
 
 
             });
+            ref.orderByChild('timestamp').limitToFirst(1).on('child_added',function(snapshot) {
+              console.log('first record', snapshot.val());
+              thefirstlat = snapshot.child("lat").val();
+              thefirstlng = snapshot.child("lng").val();
+              thefirstlevel = snapshot.child("level").val();
+              thefirstlevellength = thefirstlevel.length;
+              thefirstlevellength = thefirstlevellength - 2;
+              thefirstlevel = thefirstlevel.substr(0,thefirstlevellength);
+              thefirstlevel = parseInt(thefirstlevel, 10);
+              thefirstfloat = snapshot.child("float").val();
+              console.log(thefirstlevel);
+              document.getElementById('start_lat').innerHTML = thefirstlat;
+              document.getElementById('start_lng').innerHTML = thefirstlng;
+              document.getElementById('start_level').innerHTML = thefirstlevel;
 
+            });
             calculateAndDisplayRoute(directionsService, directionsDisplay, SourceLatLng, DestinationLatLng)
 
+
+            //On arrived button
             document.getElementById('arrived').addEventListener('click', function()
             {
               conn = 0;
@@ -516,6 +537,7 @@
                 lastlevel = parseInt(lastlevel, 10);
                 lastfloat = snapshot.child("float").val();
                 console.log(lastlevel);
+
               });
 
               ref.orderByChild('timestamp').limitToFirst(1).on('child_added',function(snapshot) {
@@ -529,6 +551,8 @@
                 firstlevel = parseInt(firstlevel, 10);
                 firstfloat = snapshot.child("float").val();
                 console.log(firstlevel);
+                //document.getElementById('start_lat').innerHTML = firstlat;
+                //document.getElementById('start_lng').innerHTML = firstlng;
               });
 
               if ((firstlevel - lastlevel <10 && firstlevel - lastlevel >0) || (lastlevel - firstlevel <10 && lastlevel - firstlevel >0) )
