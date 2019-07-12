@@ -102,6 +102,8 @@
       </div>
     </div>
 
+    <p id="fbdata_fetch"></p>
+
     <br>
       <input type="submit" id="submit">
     </div>
@@ -116,6 +118,20 @@
   <!-- TODO: Add SDKs for Firebase products that you want to use
        https://firebase.google.com/docs/web/setup#config-web-app -->
   <script>
+
+  window.onload = function() {
+      dps = []; //dataPoints.
+
+      chart = new CanvasJS.Chart("chartContainer", {
+          title: {
+              text: "Accepting DataPoints from User Input"
+          },
+          data: [{
+              type: "line",
+              dataPoints: dps
+          }]
+      });
+    }
     // Your web app's Firebase configuration
     var firebaseConfig = {
       apiKey: "AIzaSyDTN-1kbj2a3QX02H37uNtOJnYaw3gTt8Y",
@@ -418,8 +434,21 @@
               level : data.level,
               float : data.float
             }
-            console.log(fbdata);
+            //console.log(fbdata);
             ref.push(fbdata);
+
+            //vehicle = database.child("vehicle1");
+            //console.log(vehicle);
+            //query = vehicle.orderByChild(0)
+            ref.on('child_added', snap =>{
+
+              //alert(snap.val());
+              nlat = snap.child("lat").val();
+              //console.log(nlat);
+              nlng = snap.child("lng").val();
+              addDataPointsAndRender(nlat,nlng);
+            });
+
             calculateAndDisplayRoute(directionsService, directionsDisplay, SourceLatLng, DestinationLatLng)
         }
 /*
@@ -430,6 +459,23 @@
 
         */
       }
+
+
+
+
+          function addDataPointsAndRender(nlat,nlng) {
+              xValue =nlat;
+              console.log(xValue);
+
+              yValue = nlng;
+              dps.push({
+                  x: xValue,
+                  y: yValue
+              });
+              chart.render();
+          }
+
+
 
       function calculateAndDisplayRoute(directionsService, directionsDisplay, SourceLatLng, DestinationLatLng)
       {
@@ -495,5 +541,9 @@
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCxlwo-TyRGc-A6kgi3esrCNNy2HF2kQoU&callback=initBasicMap&libraries=places">
     </script>
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.4.19.0.min.js"></script>
+    <script type="text/javascript" src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+    <div id="chartContainer" style="height: 270px; width: 100%;">
+    <input id="lat" type="number" step="any" placeholder="Lat"> Y Value:
+    <input id="lng" type="number" step="any" placeholder="Lng">
   </body>
 </html>
